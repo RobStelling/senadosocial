@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+body {
+  font: 10px sans-serif;
+}
+
+.arestas line {
+  stroke: #666;
+  stroke-opacity: 0.6;
+}
+
+.vertices circle {
+  stroke: #fff;
+  stroke-width: 1px;
+}
+
+label.leArquivo input[type="file"] {
+    position:absolute;
+    top: -1000px;
+}
+
+/***** Example custom styling *****/
+.leArquivo {
+    border: 2px solid #AAA;
+    border-radius: 4px;
+    padding: 2px 5px;
+    margin: 2px;
+    background: #DDD;
+    display: inline-block;
+}
+.leArquivo:hover {
+    background: #CCC;
+}
+.leArquivo:active {
+    background: #CCF;
+}
+.leArquivo :invalid + span {
+    color: #A44;
+}
+.leArquivo :valid + span {
+    color: steelblue;
+}
+</style>
+<body>
+  <label class="leArquivo" id="grafo">
+    <input name="grafo" type="file" class="inputButtons" />
+    <span>Selecione arquivo...</span>
+  </label>
+<!--
+  -- Objeto SVG para visualuzação da rede social
+  -- 1000/1000 com origem (0,0) no centro da imagem
+  -- ocupando 100% da janela do browser
+  -->
+  <svg id="LOD" viewBox="-500 -500 1000 1000" width="100%" height="100%"></svg>
+</body>
+
+<script src="js/d3/d3.min.js"></script>
+<script src="js/d3/d3-scale-chromatic.v1.min.js"></script>
+<script src="js/desenha.js"></script>
+<script src="js/leDados.js"></script>
+<script>
+  document.getElementById("grafo")
+          .addEventListener("change", leArquivoDados, false);
+</script>
