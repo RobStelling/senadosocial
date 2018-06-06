@@ -169,19 +169,24 @@ for caput in gastosSenado:
 
 print('Total de gastos: {}'.format(rtn.reais(round(totalizacaoGastosSenado, 2))))
 
+
 def meses(anos):
     """Retorna o total de meses desde o início da legislatura até a data da coleta
     """
     #hoje = datetime.today()
     mesColeta = int(dataColeta.split('/')[1])
-    #diaAtual = hoje.day                # 1 <= day <= número de dias do mês
+    # diaAtual = hoje.day                # 1 <= day <= número de dias do mês
     pesos = np.full(len(anos), 12, dtype=int)
-    pesos[0] = 11                       # Desconta 1 do primeiro ano, porque a legislatura começa em fevereiro
-    pesos[len(anos)-1] = mesColeta      # Contabiliza o último ano pelo mês atual
-    return np.sum(pesos), pesos         # retorna o total de meses e os meses em cada ano
+    # Desconta 1 do primeiro ano, porque a legislatura começa em fevereiro
+    pesos[0] = 11
+    # Contabiliza o último ano pelo mês atual
+    pesos[len(anos) - 1] = mesColeta
+    # retorna o total de meses e os meses em cada ano
+    return np.sum(pesos), pesos
 
 
-numMeses, pesosMeses = meses(anos)      # Usado para ponderar os gastos totais e gastos com gabinete
+# Usado para ponderar os gastos totais e gastos com gabinete
+numMeses, pesosMeses = meses(anos)
 
 # Cria grafo de senadores
 grafo = {'nodes': [], 'links': []}
@@ -198,7 +203,7 @@ for gasto in gastosSenado:
         'tipo': 'gasto',
         'nome': gasto,
         'uso': round(gastosSenado[gasto], 2)
-        })
+    })
     reverso[gasto] = links
     links += 1
 
@@ -208,7 +213,7 @@ grafo['nodes'].append({
     'tipo': 'gasto',
     'nome': gabinete,
     'uso': 0.0
-    })
+})
 reverso[gabinete] = links
 links += 1
 grafo['nodes'].append({
@@ -216,7 +221,7 @@ grafo['nodes'].append({
     'tipo': 'gasto',
     'nome': moradia,
     'uso': 0.0
-    })
+})
 reverso[moradia] = links
 links += 1
 
@@ -248,9 +253,11 @@ for i in range(len(gastosSenadores)):
         gastos += gastosSenadores[i]['gastos'][g]['total']
         for tipo in gastosSenadores[i]['gastos'][g]['lista']:
             if tipo in tipoGastos:
-                tipoGastos[tipo] += round(gastosSenadores[i]['gastos'][g]['lista'][tipo], 2)
+                tipoGastos[tipo] += round(gastosSenadores[i]
+                                          ['gastos'][g]['lista'][tipo], 2)
             else:
-                tipoGastos[tipo] = round(gastosSenadores[i]['gastos'][g]['lista'][tipo], 2)
+                tipoGastos[tipo] = round(
+                    gastosSenadores[i]['gastos'][g]['lista'][tipo], 2)
 
     if correios in tipoGastos:
         maxCorreios = max(maxCorreios, tipoGastos[correios])
@@ -259,8 +266,11 @@ for i in range(len(gastosSenadores)):
     senadorMoradia = 0.0
 
     for ano in anos:
-        senadorGabinete += infoSenador[f'TotalGabinete-{ano}'] * pesosMeses[ano-anos[0]]
-        senadorMoradia += (infoSenador[f'Imóvel Funcional-{ano}'] + infoSenador[f'Auxílio-Moradia-{ano}']) # * pesosMeses[ano-anos[0]]
+        senadorGabinete += infoSenador[f'TotalGabinete-{ano}'] * \
+            pesosMeses[ano - anos[0]]
+        # * pesosMeses[ano-anos[0]]
+        senadorMoradia += (
+            infoSenador[f'Imóvel Funcional-{ano}'] + infoSenador[f'Auxílio-Moradia-{ano}'])
 
     # Converte utilização de gabinete e moradia para uma estimativa de custo
     senadorGabinete *= args.custoGabinete
@@ -282,7 +292,7 @@ for i in range(len(gastosSenadores)):
         vetor = []
         for gastos in gastosSenado:
             if gastos in tipoGastos:
-                vetor.append(round(tipoGastos[gastos],2))
+                vetor.append(round(tipoGastos[gastos], 2))
             else:
                 vetor.append(0.0)
         maxGabinete = max(maxGabinete, senadorGabinete)
@@ -304,7 +314,7 @@ for i in range(len(gastosSenadores)):
             'status': infoSenador.status,
             'participacao': infoSenador.Participacao
             # 'vetor': vetor
-            })
+        })
 
         # Cria os links do senador para o nós dos gastos
         for tipo in tipoGastos:
@@ -312,7 +322,7 @@ for i in range(len(gastosSenadores)):
                 'source': i + links,
                 'target': reverso[tipo],
                 'weight': round(tipoGastos[tipo], 2)
-                })
+            })
 
 # Preenche o gasto estimado de auxílio moradia e gabinete
 grafo['nodes'][reverso[gabinete]]['uso'] = totalGabinete
@@ -321,7 +331,7 @@ grafo['nodes'][reverso[moradia]]['uso'] = totalMoradia
 
 # Muda a escala dos gastos com gabinete para a mesma escala dos gastos com
 # correios, que é aproximadamente similar à média dos gastos.
-conversao = interp1d([0, maxGabinete], [0, maxCorreios*args.ajusteGabinete])
+conversao = interp1d([0, maxGabinete], [0, maxCorreios * args.ajusteGabinete])
 for i in vetores:
     i['vetor'][-2] = float(conversao(i['vetor'][-2]))
 
@@ -334,7 +344,7 @@ for i in vetores:
     for j in vetores:
         dist = 1 - spatial.distance.cosine(i['vetor'], j['vetor'])
         if i != j:
-            excentricidade.append(dist);
+            excentricidade.append(dist)
         if (j['id'] > i['id']):
             # dist = 1 - spatial.distance.cosine(i['vetor'], j['vetor'])
             if dist > args.similaridade:
@@ -342,13 +352,15 @@ for i in vetores:
                     'source': i['id'],
                     'target': j['id'],
                     'weight': round(float(interpolacao(dist)), 2)
-                    })
-    grafo['nodes'][reverso[i['id']]]['excentricidade'] = round(1 - np.mean(excentricidade), 5)
+                })
+    grafo['nodes'][reverso[i['id']]]['excentricidade'] = round(
+        1 - np.mean(excentricidade), 5)
 
 # Salva grafo em formato JSON
 json.dump(grafo, args.arquivoGrafo, ensure_ascii=False,
-              indent=2, separators=(',', ':'))
+          indent=2, separators=(',', ':'))
 args.arquivoGrafo.close()
+
 
 def json2gml(dados, gml, directed=0, id='id', label='label', numero=[], exclui=[]):
     """Gera arquivo em formato GML, como no exemplo abaixo:
@@ -400,8 +412,11 @@ def json2gml(dados, gml, directed=0, id='id', label='label', numero=[], exclui=[
     gml.write(']\n')
     gml.close()
 
+
 # Salva grafo em formato GML
-json2gml(grafo, args.arquivoGML, directed=(1 if args.direcionado else 0), label='nome', numero=['uso', 'excentricidade'], exclui=['vetor'])
+json2gml(grafo, args.arquivoGML, directed=(1 if args.direcionado else 0),
+         label='nome', numero=['uso', 'excentricidade'], exclui=['vetor'])
+
 
 def tickReais(x, pos=None):
     """Retorna uma string no formato <numero>M para ser usada
