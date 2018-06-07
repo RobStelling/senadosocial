@@ -188,15 +188,18 @@ def meses(anos):
 # Usado para ponderar os gastos totais e gastos com gabinete
 numMeses, pesosMeses = meses(anos)
 
-# Cria grafo de senadores
+# Cria estrutura grafo de senadores
 grafo = {'nodes': [], 'links': []}
 
 links = 0
+# Indice reverso de id para posicao no vetor 'nodes'
 reverso = {}
+# Nomes dos campos gabinete e moradia, usados para
+# indexar `reverso`
 gabinete = 'Uso de Gabinete'
 moradia = 'Uso de benefícios de moradia'
 
-# Cria os nós dos gastos
+# Cria os nós dos gastos diretos
 for gasto in gastosSenado:
     grafo['nodes'].append({
         'id': links,
@@ -208,25 +211,25 @@ for gasto in gastosSenado:
     links += 1
 
 # Cria os nós de uso de Gabinete e Moradia
-grafo['nodes'].append({
-    'id': links,
-    'tipo': 'gasto',
-    'nome': gabinete,
-    'uso': 0.0
-})
-reverso[gabinete] = links
-links += 1
-grafo['nodes'].append({
-    'id': links,
-    'tipo': 'gasto',
-    'nome': moradia,
-    'uso': 0.0
-})
-reverso[moradia] = links
-links += 1
+# O total de gastos de gabinete e moradia
+# ainda não é conhecido, será estimado
+# depois de contabilizados todos os senadores
+for gasto in (gabinete, moradia):
+    grafo['nodes'].append({
+        'id': links,
+        'tipo': 'gasto',
+        'nome': gasto,
+        'uso': 0.0
+    })
+    reverso[gasto] = links
+    links += 1
 
+# Vetores de gastos dos senadores, usado para calcular
+# proximidade do cosseno e excentricidade
 vetores = []
 
+
+# Gasto total com moradia e gabinete
 totalMoradia = 0.0
 totalGabinete = 0.0
 
@@ -235,9 +238,15 @@ totalGabinete = 0.0
 # esta dimensão domine a direção dos vetores no espaço vetorial
 # dos gastos do senado
 
-maxCorreios = 0.0
+maxReferencia = 0.0
 maxGabinete = 0.0
-correios = 'Correios'
+referencia = 'Correios'
+
+# Totaliza os gastos direto de cada senador
+# Estima os gastos indiretos e cria os vértices
+# de senadores no grafo
+# Cria os vetores de gastos de cada senador
+# e armazena em `vetores`
 
 for i in range(len(gastosSenadores)):
     # senador -> índice para o senador no df dadosSenado
@@ -259,8 +268,10 @@ for i in range(len(gastosSenadores)):
                 tipoGastos[tipo] = round(
                     gastosSenadores[i]['gastos'][g]['lista'][tipo], 2)
 
-    if correios in tipoGastos:
-        maxCorreios = max(maxCorreios, tipoGastos[correios])
+    # Maxreferencia será usado para ajustar o custo dos gastos
+    # indiretos com gabinete
+    if referencia in tipoGastos:
+        maxReferencia = max(maxReferencia, tipoGastos[referencia])
 
     senadorGabinete = 0.0
     senadorMoradia = 0.0
@@ -287,6 +298,8 @@ for i in range(len(gastosSenadores)):
     # pondera pelo número de meses da legislatura
     recursos = round(gastos + senadorGabinete + senadorMoradia, 2)
 
+# Se o total de gastos diretos for maior qqe o valor
+# de corte, cria o vértice do senador
     if (recursos > args.valorCorte):
         # Cria vetor de utilização de recursos
         vetor = []
@@ -331,7 +344,8 @@ grafo['nodes'][reverso[moradia]]['uso'] = totalMoradia
 
 # Muda a escala dos gastos com gabinete para a mesma escala dos gastos com
 # correios, que é aproximadamente similar à média dos gastos.
-conversao = interp1d([0, maxGabinete], [0, maxCorreios * args.ajusteGabinete])
+conversao = interp1d([0, maxGabinete], [
+                     0, maxReferencia * args.ajusteGabinete])
 for i in vetores:
     i['vetor'][-2] = float(conversao(i['vetor'][-2]))
 
