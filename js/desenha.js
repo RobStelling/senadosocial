@@ -1,16 +1,6 @@
 function desenha(arquivo) {
   /*
-   * Todo list:
-   * x Include static reference do d3.v4.min.js
-   * - Cleanup and comment code
-   * - Isolate adjancency matrix code (will belong to a different visualization)
-   * - Prepare to dinamically select a group or set of groups (currently using separate files)
-   * - Verify SVG attributes
-   * - Play with force field models
-   * - Review links color schema
-   * - Review group color schema (currently Colorbrewer2 categorical, 9 colors)
-   * - Separate files (css, js, html)
-   * x Review code for groupCount
+   * Desenha o grafo expandido de despesas de senadores
    */
   // Grupos de nós do grafo para colorização: gastos e partidos
   var grupos = ["gasto", "MDB", "PSDB", "PT", "PP",
@@ -21,11 +11,10 @@ function desenha(arquivo) {
 
   // Objeto SVG onde será exibida a simulação
   var svg = d3.select("svg");
-      //context = canvas.getContext("2d"),
-      //width = +svg.attr("viewBox").split(" ")[2], //svg.attr("viewBox").split(" ")[0],
-      //height = +svg.attr("viewBox").split(" ")[3];
 
   // Cores para partidos: Category10 e Set3 do colorbrewer
+  // Algumas cores são visualmente próximas mas a quantidade de
+  // partidos não acomoda uma solução definitiva
   var color = d3.schemeCategory10.concat(d3.schemeSet3);
 
   /* Simulação do diagrama de força
@@ -42,16 +31,9 @@ function desenha(arquivo) {
         caimentoVelocidadeSimulacao = 0.4,
         fatorColisao = 1.25,
         forcaAresta = 2.5,
-        forcaCarga = -5,
-        opacidadeAresta = 0.6,
-        opacidadeVertice = 1,
-        verticeAtenuado = 0.1;
+        forcaCarga = -5;
   var simulacao = d3.forceSimulation()
       .velocityDecay(caimentoVelocidadeSimulacao)
-      //.force("r", d3.forceRadial(function(d) {
-      //                              var r={ Media:50, Geography:100, Cross_domain:150, User_generated:200, Linguistics: 250,
-      //                                      Government:300, Publications:350, Social_networking: 400, Life_sciences: 450};
-      //                              return r[d.group];}))
       .force("arestas", d3.forceLink()
         .id(function(d) { return d.id; })
         .distance(function(d){
@@ -73,8 +55,10 @@ function desenha(arquivo) {
     const fatorAjusteAresta = 1/100000,
           fatorAjusteRaioSenador = 1/150,
           fatorAjusteRaioGastos = 2,
-          raioMinimo = 3;
-    var clicou = false;
+          raioMinimo = 3,
+        opacidadeAresta = 0.6,
+        opacidadeVertice = 1,
+        verticeAtenuado = 0.1;
 
     /*
      * Ajusta o tamanho dos círculos de acordo com o tipo:
@@ -87,9 +71,10 @@ function desenha(arquivo) {
       else
         proporcaoRaio = Math.log2(Math.sqrt(grafoSenado.nodes[k].uso/Math.PI))*fatorAjusteRaioGastos;
       grafoSenado.nodes[k].raio = Math.max(raioMinimo, proporcaoRaio);
-      // Math.max(5, Math.log2(grafoSenado.nodes[k].uso));
     }
 
+    // Primeiro desenha as arestas, para que fiquem ao fundo
+    // do objeto SVG
     arestas = svg.append("g")
           .attr("class", "arestas")
         .selectAll("line")
@@ -97,7 +82,7 @@ function desenha(arquivo) {
         .enter().append("line")
           .attr("class", function(d){return "S"+d.source+" "+"T"+d.target;})
           .attr("stroke-width", function(d){return Math.max(1, Math.log10(+d.weight*fatorAjusteAresta));});
-          
+    // Desenha os vértices, que são despesas e senadores
     vertices = svg.append("g")
           .attr("class", "vertices")
         .selectAll("circle")
@@ -107,12 +92,13 @@ function desenha(arquivo) {
           .attr("fill",
             function(d){return d.tipo == 'gasto' ? 'black' : color[grupos.findIndex(function(g){return d.tipo == 'senador' ? g == d.partido : g == d.tipo;})-1];})
           .attr("id", function(d){return "V"+d.id;})
-          .attr("class", function(d){return d.tipo;})
-         ;// .call(d3.drag()
-          //    .on("start", comecaArrastar)
-          //    .on("drag", arrastando)
-          //    .on("end", terminaArrastared));
-
+          .attr("class", function(d){return d.tipo;});
+          // Sem arrastar depois de terminada a simulação...
+        // .call(d3.drag()
+        //    .on("start", comecaArrastar)
+        //    .on("drag", arrastando)
+        //    .on("end", terminaArrastared));
+    // Acrescenta os dados de senadores e despesas para mouseover (efetuado pelo navegador)
     vertices
       .append("title")
         .text(function(d){
@@ -127,13 +113,14 @@ function desenha(arquivo) {
     simulacao
       .force("arestas")
       .links(grafoSenado.links);
-
+    // Associa os hoods de mouseover/mousemove/mouseout/clique nos vértices
     d3.selectAll('circle')
       .on("mouseover", mouseover)
       .on("mousemove", mousemove)
       .on("mouseout", mouseout)
       .on("click", clique);
 
+    // Tick da simulação
     function ticked() {
       arestas
         .attr("x1", function(d){return d.source.x;})
@@ -145,11 +132,11 @@ function desenha(arquivo) {
         .attr("cy", function(d){return d.y = d.y > 490 ? 490 : d.y < -490 ? -490 : d.y;});
     }
 
-  /*
-   * Destaca o vértice atual e suas conexões
-   */
+   /*
+    * Destaca o vértice atual e suas conexões
+    */
     function mouseover(d) {
-      // Marca todas as arestas, excetuando a atual
+      // Marca todas os vértices, excetuando o atual
       d3.selectAll("circle")
         .filter(function(c){return c.id != d.id;})
         .classed("atenua", true);
@@ -159,7 +146,7 @@ function desenha(arquivo) {
       // Percorre todas as arestas.
       // Apaga a marcação de atenuar dos vertices que tem origem
       // ou destino no vértice atual.
-      // Apaga as arestas que não estão conectadas ao vértice atual.
+      // Atenua as arestas que não estão conectadas ao vértice atual.
       d3.selectAll("line")
         .filter(function(l){
           // Se o atual é a origem
@@ -206,8 +193,11 @@ function desenha(arquivo) {
     }
 
 
+    /*
+     * Expande o componente conectado do vértice atual após um
+     * clique. Vértices e arestas são exibidos
+     */
     function clique(d) {
-      clicou = true;
       if (d.tipo == "senador") {
         var conectados = new Set([]);
         d3.selectAll(".normal")
@@ -233,6 +223,14 @@ function desenha(arquivo) {
       }
     }
 
+    /*
+     * Percorre o componente conectado e "acende" as arestas
+     * do componente conectado. Retorna o conjunto de vértices
+     * do componente conectado.
+     * recebe uma lista de vértices conectados e outra de
+     * já visitados. Termina a execução quando os dois conjuntos
+     * forem idênticos
+     */
     function percorre(conectados, visitados) {
       var vertice;
 
@@ -260,10 +258,12 @@ function desenha(arquivo) {
     }
   });
 
+  // Retorna true se o id corresponde a um senador
   function senador(id) {
     return d3.select("#V"+id).classed("senador");
   }
 
+  // Funções de drag, não usadas
   function comecaArrastar(d) {
     const alfaRetomada = 0.3;
     if (!d3.event.active) simulacao.alphaTarget(alfaRetomada).restart();
