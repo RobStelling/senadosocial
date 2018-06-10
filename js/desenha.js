@@ -1,3 +1,6 @@
+var des = {};
+des.clique = false;
+
 function desenha(arquivo) {
   /*
    * Desenha o grafo expandido de despesas de senadores
@@ -136,40 +139,42 @@ function desenha(arquivo) {
     * Destaca o vértice atual e suas conexões
     */
     function mouseover(d) {
+      if (!des.clique) {
       // Marca todas os vértices, excetuando o atual
-      d3.selectAll("circle")
-        .filter(function(c){return c.id != d.id;})
-        .classed("atenua", true);
-      d3.select("#V"+d.id)
-        .classed("normal", true);
+        d3.selectAll("circle")
+          .filter(function(c){return c.id != d.id;})
+          .classed("atenua", true);
+        d3.select("#V"+d.id)
+          .classed("normal", true);
 
-      // Percorre todas as arestas.
-      // Apaga a marcação de atenuar dos vertices que tem origem
-      // ou destino no vértice atual.
-      // Atenua as arestas que não estão conectadas ao vértice atual.
-      d3.selectAll("line")
-        .filter(function(l){
-          // Se o atual é a origem
-          if (d.id == l.source.id)
-            // não atenua o destino
-            d3.select("#V"+l.target.id)
-              .classed('atenua', false)
-              .classed("normal", true)
-          // Se o atual é o destino
-          else if (d.id == l.target.id)
-            // Não apaga a origem
-            d3.select("#V"+l.source.id)
-              .classed("atenua", false)
-              .classed("normal", true)
-          // Se não é origem nem destino, suprime a aresta
-          return d.id != l.source.id && d.id != l.target.id;
-        })
-        .style("opacity", 0);
-      // Atenua todos os vértices que não estão conectados
-      // ao vértice atual.
-      d3.selectAll(".atenua")
-        .style("opacity", verticeAtenuado);
-      return;
+        // Percorre todas as arestas.
+        // Apaga a marcação de atenuar dos vertices que tem origem
+        // ou destino no vértice atual.
+        // Atenua as arestas que não estão conectadas ao vértice atual.
+        d3.selectAll("line")
+          .filter(function(l){
+            // Se o atual é a origem
+            if (d.id == l.source.id)
+              // não atenua o destino
+              d3.select("#V"+l.target.id)
+                .classed('atenua', false)
+                .classed("normal", true)
+            // Se o atual é o destino
+            else if (d.id == l.target.id)
+              // Não apaga a origem
+              d3.select("#V"+l.source.id)
+                .classed("atenua", false)
+                .classed("normal", true)
+            // Se não é origem nem destino, suprime a aresta
+            return d.id != l.source.id && d.id != l.target.id;
+          })
+          .style("opacity", 0);
+        // Atenua todos os vértices que não estão conectados
+        // ao vértice atual.
+        d3.selectAll(".atenua")
+          .style("opacity", verticeAtenuado);
+        return;
+      }
     }
 
     /*
@@ -183,13 +188,15 @@ function desenha(arquivo) {
      * Restaura as arestas e linhas para o estado original
      */
     function mouseout(d) {
-      d3.selectAll("line")
-        .style("opacity", opacidadeAresta);
-      d3.selectAll("circle")
-        .classed("atenua", false)
-        .classed("normal", false)
-        .style("opacity", opacidadeVertice);
-      return;
+      if (!des.clique) {
+        d3.selectAll("line")
+          .style("opacity", opacidadeAresta);
+        d3.selectAll("circle")
+          .classed("atenua", false)
+          .classed("normal", false)
+          .style("opacity", opacidadeVertice);
+        return;
+      }
     }
 
 
@@ -198,29 +205,44 @@ function desenha(arquivo) {
      * clique. Vértices e arestas são exibidos
      */
     function clique(d) {
-      if (d.tipo == "senador") {
-        var conectados = new Set([]);
-        d3.selectAll(".normal")
-          .filter(function(a){
-            if (a.tipo == "senador") {
-              conectados.add(a.id);
-              return false;
-            }
-            return true;
-          })
-          .classed("atenua", true)
-          .classed("normal", false)
-          .style("opacity", verticeAtenuado);
-        d3.selectAll("line")
-          .filter(function(l){return l.source.tipo == "gasto" || l.target.tipo == "gasto";})
-          .style("opacity", 0);
-        marcar = percorre(conectados, new Set([d.id]));
-        for (vertice of marcar.entries())
-          d3.select("#V"+vertice[0])
-            .classed("normal", true)
-            .classed("atenua", false)
-            .style("opacity", opacidadeVertice);
+      if (des.clique) {
+        limpa();
+        des.clique = false;
+      } else {
+        des.clique = true;
+        if (d.tipo == "senador") {
+          var conectados = new Set([]);
+          d3.selectAll(".normal")
+            .filter(function(a){
+              if (a.tipo == "senador") {
+                conectados.add(a.id);
+                return false;
+              }
+              return true;
+            })
+            .classed("atenua", true)
+            .classed("normal", false)
+            .style("opacity", verticeAtenuado);
+          d3.selectAll("line")
+            .filter(function(l){return l.source.tipo == "gasto" || l.target.tipo == "gasto";})
+            .style("opacity", 0);
+          marcar = percorre(conectados, new Set([d.id]));
+          for (vertice of marcar.entries())
+            d3.select("#V"+vertice[0])
+              .classed("normal", true)
+              .classed("atenua", false)
+              .style("opacity", opacidadeVertice);
+        }
       }
+    }
+
+    function limpa() {
+      d3.selectAll("circle")
+        .classed("normal", true)
+        .classed("atenua", false)
+        .style("opacity", opacidadeVertice);
+      d3.selectAll("line")
+        .style("opacity", opacidadeAresta);
     }
 
     /*
